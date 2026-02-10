@@ -1,0 +1,261 @@
+---
+title: "Statistic Competition"
+author: "Joel Chua"
+date: "2025-11-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+working with data from UNSDG?
+Motivation: Tracking progress of ASEAN countries on 17 UNDG
+(likely will just pick the relevant ones)
+Silver tide across Asian countries??
+Alternative: Singapore data? on aging/demographic changes
+
+#elderly's living arrangement in Singapore 
+```{r}
+library(readxl)
+rawData_elderly <- read_excel("C:/Users/Joel Chua/OneDrive - National University of Singapore/Desktop/Poster competition/outputSingstat1.xlsx",sheet = "T2",range = "A11:P47")
+```
+
+#Pivot longer first
+```{r}
+library(tidyverse)
+longData_elderly <- rawData_elderly %>%
+  pivot_longer(cols = `2024`:`2010`,
+              names_to = "year",
+              values_to = "count") %>%
+  rename(Category = `Data Series`)
+```
+
+#filling in the age categories
+```{r}
+longData_elderly <- longData_elderly %>%
+  mutate(
+    age_group = if_else(
+      grepl("^[0-9]{2}.*Years", Category), Category, NA_character_)
+  ) %>%
+  fill(age_group) 
+```
+
+#Converting counts to proportions (within each year)
+```{r}
+df_long <- longData_elderly  %>%
+  filter(!grepl("Years", Category)) %>%   # keep only living arrangement rows
+  rename(living_arrangement = Category)
+
+df_prop <- df_long %>%
+  group_by(age_group, year) %>%
+  mutate(
+    total_age_group = sum(count),
+    proportion = count / total_age_group
+  ) %>%
+  ungroup()
+```
+
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+df_prop_2024 <- df_prop %>% filter(year == 2024) %>% filter(!is.na(age_group))
+
+library(ggplot2)
+
+ggplot(df_prop, aes(x = age_group, y = proportion, fill = living_arrangement)) +
+  geom_bar(stat = "identity", position = "fill", width = 0.6) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Proportion of Elderly by Living Arrangement for each Age Category (2024)",
+    x = "Age Group",
+    y = "Proportion"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+#enhanced bar graphs for 2024
+```{r}
+library(ggplot2)
+library(dplyr)
+
+df_prop_2024 %>%
+  ggplot(aes(x = age_group,
+             y = proportion,
+             fill = living_arrangement)) +
+  geom_bar(stat = "identity", position = "fill", color = "white", linewidth = 0.2) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  
+  # Optional: reorder living arrangements (so similar types group visually)
+  scale_fill_brewer(palette = "Set2") +
+  
+  labs(
+    title = "Proportion of Elderly by Living Arrangement in 2024",
+    subtitle = "Across Age Groups in Singapore",
+    x = "Age Group",
+    y = "Proportion",
+    fill = "Living Arrangement"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18),
+    plot.subtitle = element_text(size = 13),
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "right",
+    panel.grid.minor = element_blank()
+  )
+
+```
+
+```{r}
+df_prop_2014 <- df_prop %>% filter(year == 2014) %>% filter(!is.na(age_group))
+
+library(ggplot2)
+library(dplyr)
+
+df_prop_2014 %>%
+  ggplot(aes(x = age_group,
+             y = proportion,
+             fill = living_arrangement)) +
+  geom_bar(stat = "identity", position = "fill", color = "white", linewidth = 0.2) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  
+  # Optional: reorder living arrangements (so similar types group visually)
+  scale_fill_brewer(palette = "Set2") +
+  
+  labs(
+    title = "Proportion of Elderly by Living Arrangement in 2014",
+    subtitle = "Across Age Groups in Singapore",
+    x = "Age Group",
+    y = "Proportion",
+    fill = "Living Arrangement"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18),
+    plot.subtitle = element_text(size = 13),
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "right",
+    panel.grid.minor = element_blank()
+  )
+```
+
+
+# data on hospital admission rates 
+```{r}
+library(readxl)
+rawData_eld2 <- read_excel("C:/Users/Joel Chua/OneDrive - National University of Singapore/Desktop/Poster competition/outputFile.xlsx",sheet = "T1",range = "A10:V20")
+```
+
+```{r}
+library(tidyverse)
+library(dplyr)
+year_cols <- grep("^20", names(rawData_eld2), value = TRUE)
+
+rawData_eld2 <- rawData_eld2 %>%
+  mutate(across(all_of(year_cols), ~ as.numeric(.)))
+
+longData_2 <- rawData_eld2 %>%
+  pivot_longer(cols = `2025`:`2005`,
+              names_to = "Year",
+              values_to = "Value") %>%
+  rename(Indicator = `Data Series`)
+```
+
+#data on Proportion Of Elderly Residents (65 Years & Over) In Labour Force
+
+```{r}
+library(tidyverse)
+library(dplyr)
+longData_laborForce <- longData_2 %>% 
+  slice(86:105)
+
+
+ggplot(longData_laborForce, aes(x = Year, y = Value,group = 1)) +
+  geom_line() +
+  labs(
+    title = "Proportion Of Elderly Residents (65 Years & Over) In Labour Force (Per Cent)",
+    x = "Year",
+    y = "% of Elderly in Labour Force"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 10, face = "bold", hjust = 0.5)
+  )
+```
+
+# Sex ratio graph
+```{r}
+library(tidyverse)
+library(dplyr)
+longData_sexRatio <- longData_2 %>% 
+  slice(65:84)
+
+
+ggplot(longData_laborForce, aes(x = Year, y = Value, group = 1)) +
+  geom_col(fill = "skyblue") +
+  labs(
+    title = "Sex Ratio Of Elderly Residents (65 Years & Over)",
+    x = "Year",
+    y = "Males Per Thousand Females"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 10, face = "bold", hjust = 0.5)
+  )
+```
+
+
+#life expectancy at 65 y.o
+```{r}
+library(tidyverse)
+library(dplyr)
+longData_lifeExpectancy <- longData_2 %>% 
+  slice(128:147)
+
+
+ggplot(longData_lifeExpectancy, aes(x = Year, y = Value, group = 1)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Life Expectancy At Age 65 Years (Years)",
+    x = "Year",
+    y = "Life Expectancy At Age 65 Years (Years)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 10, face = "bold", hjust = 0.5)
+  )
+```
+
+#death rate, heart disease rate and cancer rate per 1000
+```{r}
+healthData <- longData_2 %>% 
+  slice(149:n()) %>% 
+  filter(Year < 2025 & Year > 2014)
+
+ggplot(healthData, aes(x = Year, y = Indicator, fill = Value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lightyellow", high = "red") +
+  labs(
+    title = "Health Outcomes Among Elderly Residents (2014–2024)",
+    x = "Year",
+    y = "Health Indicator",
+    fill = "Rate"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", size = 18)
+  )
+
+```
+
